@@ -1,0 +1,158 @@
+dependencies:
+  flutter:
+    sdk: flutter
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.2.0
+  http: ^1.2.2
+  flutter pub get
+  <uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
+
+void main() {
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: HinataVoiceChat(),
+  ));
+}
+
+class HinataVoiceChat extends StatefulWidget {
+  const HinataVoiceChat({super.key});
+
+  @override
+  State<HinataVoiceChat> createState() => _HinataVoiceChatState();
+}
+
+class _HinataVoiceChatState extends State<HinataVoiceChat> {
+  final stt.SpeechToText speech = stt.SpeechToText();
+  final FlutterTts tts = FlutterTts();
+  final TextEditingController input = TextEditingController();
+
+  String recognizedText = '';
+  String reply = 'नमस्ते! मैं आपकी Hinata AI Assistant हूँ।';
+  bool listening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    setupTts();
+  }
+
+  Future<void> setupTts() async {
+    await tts.setLanguage('hi-IN');
+    await tts.setSpeechRate(0.45);
+    await tts.setPitch(1.1);
+  }
+
+  Future<void> startListening() async {
+    final available = await speech.initialize();
+
+    if (!available) {
+      setState(() {
+        reply = 'माइक्रोफोन या Speech Recognition उपलब्ध नहीं है।';
+      });
+      return;
+    }
+
+    setState(() => listening = true);
+
+    await speech.listen(
+      localeId: 'hi_IN',
+      onResult: (result) {
+        setState(() {
+          recognizedText = result.recognizedWords;
+          input.text = recognizedText;
+        });
+      },
+    );
+  }
+
+  Future<void> stopListening() async {
+    await speech.stop();
+    setState(() => listening = false);
+  }
+
+  Future<void> speakHindi(String text) async {
+    await tts.stop();
+    await tts.speak(text);
+  }
+
+  @override
+  void dispose() {
+    input.dispose();
+    speech.cancel();
+    tts.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF17152A),
+      appBar: AppBar(
+        title: const Text('Hinata Hindi AI 💜'),
+        backgroundColor: const Color(0xFF7774D2),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const CircleAvatar(
+              radius: 65,
+              backgroundColor: Color(0xFF7774D2),
+              child: Icon(
+                Icons.face_3_rounded,
+                size: 90,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              reply,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: input,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'हिंदी में बोलें या लिखें...',
+                hintStyle: TextStyle(color: Colors.white60),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white30),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              children: [
+                ElevatedButton.icon(
+                  onPressed:
+                      listening ? stopListening : startListening,
+                  icon: Icon(
+                    listening ? Icons.stop : Icons.mic,
+                  ),
+                  label: Text(
+                    listening ? 'रोकें' : 'बोलें',
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => speakHindi(reply),
+                  icon: const Icon(Icons.volume_up),
+                  label: const Text('सुनें'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
